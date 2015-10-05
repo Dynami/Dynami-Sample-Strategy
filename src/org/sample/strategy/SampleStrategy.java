@@ -15,14 +15,23 @@
  */
 package org.sample.strategy;
 
+import org.dynami.core.IDynami;
 import org.dynami.core.IStage;
 import org.dynami.core.IStrategy;
+import org.dynami.core.orders.MarketOrder;
 
 public class SampleStrategy implements IStrategy {
-
+	
 	@Override
 	public IStage startsWith() {
-		return new Stage1();
+		return new Rsi2();
 	}
-
+	
+	public static void closeAll(IDynami dynami){
+		dynami.portfolio().getOpenPosition().forEach(op->{
+			dynami.orders().send(new MarketOrder(op.symbol, -op.quantity, "close all"));
+		});
+		
+		dynami.orders().removePendings();
+	}
 }
