@@ -29,7 +29,6 @@ import com.tictactec.ta.lib.MAType;
 /**
  * Implementation in Dynami of RSI2 strategy developed by Larry Connors.
  * {@link http://stockcharts.com/school/doku.php?id=chart_school:trading_strategies:rsi2}
- * @author Atria
  */
 public class Rsi2 implements IStage {
 	// Declare strategy parameters
