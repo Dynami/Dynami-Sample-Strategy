@@ -18,6 +18,7 @@ package org.sample.strategy;
 import org.dynami.core.Event;
 import org.dynami.core.IDynami;
 import org.dynami.core.IStage;
+import org.dynami.core.config.Config.Param;
 import org.dynami.core.data.Series;
 import org.dynami.core.orders.MarketOrder;
 import org.dynami.ta.momentum.Rsi;
@@ -32,14 +33,18 @@ import com.tictactec.ta.lib.MAType;
  */
 public class Rsi2 implements IStage {
 	// Declare strategy parameters
+	@Param(description="Main asset symbol") 
 	String symbol = "FTSEMIB";
 	
+	@Param(description="Long term moving average period")
 	int longTermPeriod = 21; //200
+	@Param(description="Short term moving average period")
 	int shortTermPeriod = 10; //5
-	int rsiPeriod = 2;
+	@Param(description="RSI period")
+	int rsiPeriod = 2; // 2
 	
-	double shortThreshold = 95;
-	double longThreshold = 5;
+	double shortThreshold = 95; // 95
+	double longThreshold = 5; // 5
 	
 	
 	// Declare technical indicators and other stuffs
@@ -60,7 +65,7 @@ public class Rsi2 implements IStage {
 	@Override
 	public void process(IDynami dynami, Event event) {
 		// filter only on bar close events
-		if(event.is(Event.Type.OnDayClose)){
+		if(event.is(Event.Type.OnBarClose)){
 			
 			// collect close data on a Series
 			close.append(event.bar.close);
