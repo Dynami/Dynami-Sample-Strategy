@@ -45,7 +45,6 @@ public class Rsi2 implements IStage {
 	double shortThreshold = 95; // 95
 	double longThreshold = 5; // 5
 	
-	
 	// Declare technical indicators and other stuffs
 	MovingAverage longTerm; 
 	MovingAverage shortTerm;
