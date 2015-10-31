@@ -34,4 +34,12 @@ public class SampleStrategy implements IStrategy {
 		
 		dynami.orders().removePendings();
 	}
+	
+	public static void closeAllPositions(IDynami dynami){
+		dynami.portfolio().getOpenPosition().forEach(op->{
+			dynami.orders().send(new MarketOrder(op.symbol, -op.quantity, "close all"));
+		});
+		
+		dynami.orders().removePendings();
+	}
 }
