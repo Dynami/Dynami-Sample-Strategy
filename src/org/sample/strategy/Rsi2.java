@@ -31,6 +31,9 @@ import com.tictactec.ta.lib.MAType;
  * {@link http://stockcharts.com/school/doku.php?id=chart_school:trading_strategies:rsi2}
  */
 public class Rsi2 implements IStage {
+	// THIS IS NOT AN ADVICE FOR INVESTMENT.
+	// PLEASE, READ DISCLAIMER IN DYNAMI PROJECT BLOG
+	
 	// Declare strategy parameters
 	@Param(description="Main asset symbol") 
 	String symbol = "FTSEMIB";
