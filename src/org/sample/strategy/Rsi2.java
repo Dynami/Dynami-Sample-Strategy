@@ -82,6 +82,10 @@ public class Rsi2 implements IStage {
 				boolean upwardTrend = longTerm.get().isGreaterThan(shortTerm.get());
 				boolean downwardTrend = longTerm.get().isGreaterThan(shortTerm.get());
 				
+				if(rsi.get().last() >= shortThreshold || rsi.get().last() <= longThreshold){
+					dynami.trace().info(getName(), "Potentially good entry point "+rsi.get().last());
+				}
+				
 				// enter only if you are flat
 				if(dynami.portfolio().isFlat(symbol)){
 					// go long if you are in upward trend and if rsi is over sold
