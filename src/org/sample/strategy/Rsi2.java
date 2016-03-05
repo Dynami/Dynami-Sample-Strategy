@@ -18,6 +18,7 @@ package org.sample.strategy;
 import org.dynami.core.Event;
 import org.dynami.core.IDynami;
 import org.dynami.core.IStage;
+import org.dynami.core.config.Config;
 import org.dynami.core.config.Config.Param;
 import org.dynami.core.data.Series;
 import org.dynami.core.orders.MarketOrder;
@@ -30,86 +31,86 @@ import com.tictactec.ta.lib.MAType;
  * Implementation in Dynami of RSI2 strategy developed by Larry Connors.
  * {@link http://stockcharts.com/school/doku.php?id=chart_school:trading_strategies:rsi2}
  */
+@Config.Settings
 public class Rsi2 implements IStage {
 	// THIS IS NOT AN ADVICE FOR INVESTMENT.
 	// PLEASE, READ DISCLAIMER IN DYNAMI PROJECT BLOG
-	
-	// Declare strategy parameters
-	@Param(description="Main asset symbol") 
-	String symbol = "FTSEMIB";
-	
-	@Param(description="Long term moving average period")
-	int longTermPeriod = 21; //200
-	@Param(description="Short term moving average period")
-	int shortTermPeriod = 10; //5
+
+	@Param(description="Slow moving average period")
+	int slowPeriod = 21; //200
+	@Param(description="Fast moving average period")
+	int fastPeriod = 10; //5
 	@Param(description="RSI period")
 	int rsiPeriod = 2; // 2
-	
+
+	@Param(name="Overbought RSI threshold")
 	double shortThreshold = 95; // 95
+	@Param(name="Oversold RSI threshold")
 	double longThreshold = 5; // 5
-	
+
 	// Declare technical indicators and other stuffs
-	MovingAverage longTerm; 
-	MovingAverage shortTerm;
+	MovingAverage slowMA;
+	MovingAverage fastMA;
 	Rsi rsi;
-	
+
 	Series close = new Series();
 
 	@Override
 	public void setup(IDynami dynami) {
 		// It's recommended using setup method to initialize indicators, in order to setup parameters from external configuration file (future implementation)
-		longTerm = new MovingAverage(longTermPeriod, MAType.Sma);
-		shortTerm = new MovingAverage(shortTermPeriod, MAType.Ema);
+		slowMA = new MovingAverage(slowPeriod, MAType.Sma);
+		fastMA = new MovingAverage(fastPeriod, MAType.Ema);
 		rsi = new Rsi(rsiPeriod);
 	}
+
 
 	@Override
 	public void process(IDynami dynami, Event event) {
 		// filter only on bar close events
 		if(event.is(Event.Type.OnBarClose)){
-			
 			// collect close data on a Series
 			close.append(event.bar.close);
-			
+
 			// compute technical indicators
-			longTerm.compute(close);
-			shortTerm.compute(close);
+			slowMA.compute(close);
+			fastMA.compute(close);
 			rsi.compute(close);
-			
+
 			// start using technical indicators only if the longest can be properly computed, using isReady()
-			if(longTerm.isReady()){
+			if(slowMA.isReady()){
 				// check trends
-				boolean upwardTrend = longTerm.get().isGreaterThan(shortTerm.get());
-				boolean downwardTrend = longTerm.get().isGreaterThan(shortTerm.get());
-				
+
+				boolean upwardTrend = close.isGreaterThan(slowMA.get());
+				boolean downwardTrend = close.isLowerThan(slowMA.get());
+
 				if(rsi.get().last() >= shortThreshold || rsi.get().last() <= longThreshold){
 					dynami.trace().info(getName(), "Potentially good entry point "+rsi.get().last());
 				}
-				
+
 				// enter only if you are flat
-				if(dynami.portfolio().isFlat(symbol)){
+				if(dynami.portfolio().isFlat(SampleStrategy.symbol)){
 					// go long if you are in upward trend and if rsi is over sold
-					if(upwardTrend && rsi.get().last() <= longThreshold){
-						dynami.orders().send(new MarketOrder(symbol, 1, "go long"));
+					if(upwardTrend && rsi.get().last() <= longThreshold /*&& close.isLowerThan(fastMA.get())*/){
+						dynami.orders().send(new MarketOrder(SampleStrategy.symbol, 1, "go long"));
 					}
 					// go short if you are in downward trend and if rsi is over bought
-					if(downwardTrend && rsi.get().last() >= shortThreshold){
-						dynami.orders().send(new MarketOrder(symbol, -1, "go short"));
+					if(downwardTrend && rsi.get().last() >= shortThreshold /*&& close.isGreaterThan(fastMA.get())*/){
+						dynami.orders().send(new MarketOrder(SampleStrategy.symbol, -1, "go short"));
 					}
 				} else {
 					// Plan exit on mean reverting strategy
-					
-					// exit long if price goes above short term moving average 
-					if(dynami.portfolio().isLong(symbol) && close.crossesOver(shortTerm.get())){
-						dynami.orders().send(new MarketOrder(symbol, -1, "exit long"));
+
+					// exit long if price goes above short term moving average
+					if(dynami.portfolio().isLong(SampleStrategy.symbol) && close.crossesOver(fastMA.get())){
+						dynami.orders().send(new MarketOrder(SampleStrategy.symbol, -1, "exit long"));
 					}
-					
+
 					// exit short if price goes below short term moving average
-					if(dynami.portfolio().isShort(symbol) && close.crossesUnder(shortTerm.get())){
-						dynami.orders().send(new MarketOrder(symbol, 1, "exit short"));
+					if(dynami.portfolio().isShort(SampleStrategy.symbol) && close.crossesUnder(fastMA.get())){
+						dynami.orders().send(new MarketOrder(SampleStrategy.symbol, 1, "exit short"));
 					}
 				}
 			}
-		} 
+		}
 	}
 }

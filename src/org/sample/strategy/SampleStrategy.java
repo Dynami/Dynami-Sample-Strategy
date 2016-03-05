@@ -18,28 +18,25 @@ package org.sample.strategy;
 import org.dynami.core.IDynami;
 import org.dynami.core.IStage;
 import org.dynami.core.IStrategy;
+import org.dynami.core.config.Config;
 import org.dynami.core.orders.MarketOrder;
 
+@Config.Settings
 public class SampleStrategy implements IStrategy {
-	
+
+	@Config.Param(name="Symbol", description="Asset used in the strategy")
+	static String symbol = "FTSEMIB";
+
 	@Override
 	public IStage startsWith() {
 		return new Rsi2();
 	}
-	
+
 	public static void closeAll(IDynami dynami){
-		dynami.portfolio().getOpenPosition().forEach(op->{
-			dynami.orders().send(new MarketOrder(op.symbol, -op.quantity, "close all"));
+		dynami.portfolio().getOpenPositions().forEach(op->{
+			dynami.orders().send(new MarketOrder(op.asset.symbol, -op.quantity, "close all"));
 		});
-		
-		dynami.orders().removePendings();
-	}
-	
-	public static void closeAllPositions(IDynami dynami){
-		dynami.portfolio().getOpenPosition().forEach(op->{
-			dynami.orders().send(new MarketOrder(op.symbol, -op.quantity, "close all"));
-		});
-		
+
 		dynami.orders().removePendings();
 	}
 }
