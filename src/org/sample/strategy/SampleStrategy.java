@@ -19,7 +19,6 @@ import org.dynami.core.IDynami;
 import org.dynami.core.IStage;
 import org.dynami.core.IStrategy;
 import org.dynami.core.config.Config;
-import org.dynami.core.orders.MarketOrder;
 
 @Config.Settings
 public class SampleStrategy implements IStrategy {
@@ -34,7 +33,7 @@ public class SampleStrategy implements IStrategy {
 
 	public static void closeAll(IDynami dynami){
 		dynami.portfolio().getOpenPositions().forEach(op->{
-			dynami.orders().send(new MarketOrder(op.asset.symbol, -op.quantity, "close all"));
+			dynami.orders().marketOrder(op.asset.symbol, -op.quantity, "close all");
 		});
 
 		dynami.orders().removePendings();

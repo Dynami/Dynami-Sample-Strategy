@@ -21,7 +21,6 @@ import org.dynami.core.IStage;
 import org.dynami.core.config.Config;
 import org.dynami.core.config.Config.Param;
 import org.dynami.core.data.Series;
-import org.dynami.core.orders.MarketOrder;
 import org.dynami.ta.momentum.Rsi;
 import org.dynami.ta.overlap_studies.MovingAverage;
 
@@ -91,23 +90,23 @@ public class Rsi2 implements IStage {
 				if(dynami.portfolio().isFlat(SampleStrategy.symbol)){
 					// go long if you are in upward trend and if rsi is over sold
 					if(upwardTrend && rsi.get().last() <= longThreshold /*&& close.isLowerThan(fastMA.get())*/){
-						dynami.orders().send(new MarketOrder(SampleStrategy.symbol, 1, "go long"));
+						dynami.orders().marketOrder(SampleStrategy.symbol, 1, "go long");
 					}
 					// go short if you are in downward trend and if rsi is over bought
 					if(downwardTrend && rsi.get().last() >= shortThreshold /*&& close.isGreaterThan(fastMA.get())*/){
-						dynami.orders().send(new MarketOrder(SampleStrategy.symbol, -1, "go short"));
+						dynami.orders().marketOrder(SampleStrategy.symbol, -1, "go short");
 					}
 				} else {
 					// Plan exit on mean reverting strategy
 
 					// exit long if price goes above short term moving average
 					if(dynami.portfolio().isLong(SampleStrategy.symbol) && close.crossesOver(fastMA.get())){
-						dynami.orders().send(new MarketOrder(SampleStrategy.symbol, -1, "exit long"));
+						dynami.orders().marketOrder(SampleStrategy.symbol, -1, "exit long");
 					}
 
 					// exit short if price goes below short term moving average
 					if(dynami.portfolio().isShort(SampleStrategy.symbol) && close.crossesUnder(fastMA.get())){
-						dynami.orders().send(new MarketOrder(SampleStrategy.symbol, 1, "exit short"));
+						dynami.orders().marketOrder(SampleStrategy.symbol, 1, "exit short");
 					}
 				}
 			}
