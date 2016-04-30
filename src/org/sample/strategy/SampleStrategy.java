@@ -28,7 +28,7 @@ public class SampleStrategy implements IStrategy {
 
 	@Override
 	public IStage startsWith() {
-		return new Rsi2();
+		return new WarriorReversal();
 	}
 
 	public static void closeAll(IDynami dynami){
