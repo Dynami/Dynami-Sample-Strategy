@@ -88,28 +88,49 @@ public class WarriorReversal implements IStage {
 		// if all technical indicators are not ready skip execution
 		if(!rsi.isReady() || !entryBB.isReady() || !exitBB.isReady()) return;
 		
+		// floating exit price depending on
 		pivots[0] = entryBB.getRealUpperBand().last();
 		pivots[1] = exitBB.getRealUpperBand().last();
 		pivots[2] = entryBB.getRealMiddleBand().last();
 		pivots[3] = exitBB.getRealLowerBand().last();
 		pivots[4] = entryBB.getRealLowerBand().last();
 		
+//		if( dynami.portfolio().isFlat() // if is not on market
+//			&& !dynami.orders().thereArePendingOrders() // and there are not pending orders
+//			&& closes.crossesUnder(entryBB.getRealUpperBand().last()) // and close price falls down under upper bollinger band
+//			&& rsi.get().last(1) >= rsiUpperThreshold){ // and previous rsi is overbought
+//			stopLoss = Math.max(current.high, previous.high);
+//			dynami.orders().marketOrder(event.symbol, -1, "Go short");
+//		}
+//		
+//		// if is short and close price falls down below exit upper bb, or rises up entry upper bb
+//		if( dynami.portfolio().isShort(event.symbol) &&
+//			!dynami.orders().thereArePendingOrders() &&
+//			( closes.crossesOver(stopLoss)
+//			|| closes.crossesUnder(exitBB.getRealUpperBand().last()) 
+//			|| closes.crossesOver(entryBB.getRealUpperBand().last()))){
+//				
+//			dynami.orders().marketOrder(event.symbol, 1, "Exit short");
+//		}
+		
 		if( dynami.portfolio().isFlat() // if is not on market
-			&& !dynami.orders().thereArePendingOrders() // and there are not pending orders
-			&& closes.crossesUnder(entryBB.getRealUpperBand().last()) // and close price falls down under upper bollinger band
-			&& rsi.get().last(1) >= rsiUpperThreshold){ // and previous rsi is overbought
-			stopLoss = previous.high;
+			&& !dynami.orders().thereArePendingOrders() // and ther are not pending orders
+			&& closes.crossesUnder(entryBB.getRealUpperBand().last()) // and close price rises up over lower bollinger band
+			&& rsi.get().last(1) <= rsiUpperThreshold){ // and rsi is oversold
+			stopLoss = Math.min(previous.high, current.high);
+			pivotIdx = 0;
 			dynami.orders().marketOrder(event.symbol, -1, "Go short");
 		}
-		
-		// if is short and close price falls down below exit upper bb, or rises up entry upper bb
-		if( dynami.portfolio().isShort(event.symbol) &&
-			!dynami.orders().thereArePendingOrders() &&
-			( closes.crossesOver(stopLoss)
-			|| closes.crossesUnder(exitBB.getRealUpperBand().last()) 
-			|| closes.crossesOver(entryBB.getRealUpperBand().last()))){
-				
-			dynami.orders().marketOrder(event.symbol, 1, "Exit short");
+		// if is long and close price rises up over exit lower bb, or falls down entry lower bb
+		if( dynami.portfolio().isShort(event.symbol)){
+			if(closes.crossesUnder(pivots[Math.min(4,pivotIdx+1)])){
+				pivotIdx++;
+			}
+			if(!dynami.orders().thereArePendingOrders() 
+				&& ( closes.crossesOver(stopLoss) 
+				|| closes.crossesOver(pivots[pivotIdx]))){
+				dynami.orders().marketOrder(event.symbol, 1, "Exit short");	
+			}
 		}
 		
 		if( dynami.portfolio().isFlat() // if is not on market
