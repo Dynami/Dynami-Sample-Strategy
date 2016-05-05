@@ -23,6 +23,8 @@ import org.dynami.core.config.Config.Param;
 import org.dynami.core.config.Config.Settings;
 import org.dynami.core.data.Bar;
 import org.dynami.core.data.Series;
+import org.dynami.core.display.Display;
+import org.dynami.core.plot.Plot;
 import org.dynami.ta.momentum.Rsi;
 /**
  * Personal version of warrior trading strategy from Warrior Trading 
@@ -36,8 +38,13 @@ public class WarriorReversal implements IStage {
 	// WORK IN PROGRESS -
 	// THIS IS NOT AN ADVICE FOR INVESTMENT.
 	// PLEASE, READ DISCLAIMER IN DYNAMI PROJECT BLOG
+//	@Plot(on="RSI", name="Rsi")
 	Rsi rsi;
-	Bbands entryBB, exitBB;
+	
+	@Plot
+	Bbands entryBB;
+	
+	Bbands exitBB;
 	
 	@Param(name="RSI Period", description="Number of bars used to calculate the technical indicator")
 	int rsiPeriod = 5;
@@ -63,13 +70,17 @@ public class WarriorReversal implements IStage {
 	Series closes = new Series();
 	Bar current, previous;
 	double stopLoss = Double.NaN;
+	
+	@Display
 	double[] pivots = new double[5];
+	
+	
 	int pivotIdx = 0;
 	
 	@Override
 	public void setup(IDynami dynami) {
 		rsi = new Rsi(rsiPeriod);
-		entryBB = new Bbands(entryBBPeriod, entryBB1Std, entryBB1Std, MAType.Sma);
+		entryBB = new Bbands(entryBBPeriod, entryBB1Std, entryBB1Std-.6, MAType.Sma);
 		exitBB = new Bbands(entryBB2Period, entryBB2Std, entryBB2Std, MAType.Sma);
 	}
 
@@ -116,7 +127,8 @@ public class WarriorReversal implements IStage {
 		if( dynami.portfolio().isFlat() // if is not on market
 			&& !dynami.orders().thereArePendingOrders() // and ther are not pending orders
 			&& closes.crossesUnder(entryBB.getRealUpperBand().last()) // and close price rises up over lower bollinger band
-			&& rsi.get().last(1) <= rsiUpperThreshold){ // and rsi is oversold
+			&& rsi.get().last(1) >= rsiUpperThreshold
+			){ // and rsi is oversold
 			stopLoss = Math.min(previous.high, current.high);
 			pivotIdx = 0;
 			dynami.orders().marketOrder(event.symbol, -1, "Go short");
@@ -124,7 +136,7 @@ public class WarriorReversal implements IStage {
 		// if is long and close price rises up over exit lower bb, or falls down entry lower bb
 		if( dynami.portfolio().isShort(event.symbol)){
 			if(closes.crossesUnder(pivots[Math.min(4,pivotIdx+1)])){
-				pivotIdx++;
+				pivotIdx = Math.min(4, ++pivotIdx);
 			}
 			if(!dynami.orders().thereArePendingOrders() 
 				&& ( closes.crossesOver(stopLoss) 
@@ -144,7 +156,7 @@ public class WarriorReversal implements IStage {
 		// if is long and close price rises up over exit lower bb, or falls down entry lower bb
 		if( dynami.portfolio().isLong(event.symbol)){
 			if(closes.crossesOver(pivots[Math.max(0,pivotIdx-1)])){
-				pivotIdx--;
+				pivotIdx = Math.max(0, --pivotIdx);
 			}
 			if(!dynami.orders().thereArePendingOrders() 
 					&& ( closes.crossesUnder(stopLoss) || 
