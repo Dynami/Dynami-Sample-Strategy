@@ -23,7 +23,6 @@ import org.dynami.core.config.Config.Param;
 import org.dynami.core.config.Config.Settings;
 import org.dynami.core.data.Bar;
 import org.dynami.core.data.Series;
-import org.dynami.core.display.Display;
 import org.dynami.core.plot.Colors;
 import org.dynami.core.plot.Plot;
 import org.dynami.ta.momentum.Rsi;
@@ -42,51 +41,49 @@ public class WarriorReversal implements IStage {
 	Rsi rsi;
 	
 	@Plot(color=Colors.BLUE)
-	Bbands entryBB;
+	Bbands outerBB;
 	
 	@Plot(color=Colors.BLUEVIOLET)
-	Bbands exitBB;
+	Bbands innerBB;
 	
 	@Param(name="RSI Period", description="Number of bars used to calculate the technical indicator")
 	int rsiPeriod = 5;
 	
 	@Param(name="RSI Upper Threshold", description="Overbought threshold")
-	double rsiUpperThreshold = 50;
+	double rsiUpperThreshold = 90;
 	
 	@Param(name="RSI Lower Threshold", description="Oversold threshold")
-	double rsiLowerThreshold = 50;
+	double rsiLowerThreshold = 10;
 	
-	@Param(name="Entry Bollinger Bands Period")
-	int entryBBPeriod = 20;
+	@Param(name="Outer Bollinger Bands Period")
+	int outerBBPeriod = 20;
 	
-	@Param(name="Entry Bollinger Bands Std")
-	double entryBB1Std = 2.;
+	@Param(name="Outer Bollinger Bands Std")
+	double outerBBStd = 2.2;
 	
-	@Param(name="Exit Bollinger Bands Period")
-	int entryBB2Period = 20;
+	@Param(name="Inner Bollinger Bands Period")
+	int innerBBPeriod = 20;
 	
-	@Param(name="Exit Bollinger Bands Std")
-	double entryBB2Std = 0.8;
+	@Param(name="Inner Bollinger Bands Std")
+	double innerBBStd = 1.2;
 	
 	Series closes = new Series();
 	Bar current, previous;
 	
+//	@Plot(color=Colors.RED)
 	double stopLoss = Double.NaN;
 	
-	@Plot(color=Colors.RED)
+//	@Plot(color=Colors.ORANGERED)
 	double stop = Double.NaN;
 	
-	@Display
 	double[] pivots = new double[5];
-	
-	
 	int pivotIdx = 0;
 	
 	@Override
 	public void setup(IDynami dynami) {
 		rsi = new Rsi(rsiPeriod);
-		entryBB = new Bbands(entryBBPeriod, entryBB1Std, entryBB1Std-.6, MAType.Sma);
-		exitBB = new Bbands(entryBB2Period, entryBB2Std, entryBB2Std, MAType.Sma);
+		outerBB = new Bbands(outerBBPeriod, outerBBStd-.4, outerBBStd, MAType.Sma);
+		innerBB = new Bbands(innerBBPeriod, innerBBStd-.2, innerBBStd, MAType.Sma);
 	}
 
 	@Override
@@ -99,36 +96,37 @@ public class WarriorReversal implements IStage {
 		closes.append(current.close);
 		
 		rsi.compute(closes);
-		entryBB.compute(closes);
-		exitBB.compute(closes);
+		outerBB.compute(closes);
+		innerBB.compute(closes);
 		// if all technical indicators are not ready skip execution
-		if(!rsi.isReady() || !entryBB.isReady() || !exitBB.isReady()) return;
+		if(!rsi.isReady() || !outerBB.isReady() || !innerBB.isReady()) return;
 		
 		// floating exit price depending on
-		pivots[0] = entryBB.getRealUpperBand().last();
-		pivots[1] = exitBB.getRealUpperBand().last();
-		pivots[2] = entryBB.getRealMiddleBand().last();
-		pivots[3] = exitBB.getRealLowerBand().last();
-		pivots[4] = entryBB.getRealLowerBand().last();
+		pivots[0] = outerBB.getRealUpperBand().last();
+		pivots[1] = innerBB.getRealUpperBand().last();
+		pivots[2] = outerBB.getRealMiddleBand().last();
+		pivots[3] = innerBB.getRealLowerBand().last();
+		pivots[4] = outerBB.getRealLowerBand().last();
 		
 		if( dynami.portfolio().isFlat() // if is not on market
 			&& !dynami.orders().thereArePendingOrders() // and ther are not pending orders
-			&& closes.crossesUnder(entryBB.getRealUpperBand().last()) // and close price rises up over lower bollinger band
+			&& closes.crossesUnder(outerBB.getRealUpperBand()) // and close price rises up over lower bollinger band
 			&& rsi.get().last(1) >= rsiUpperThreshold
 			){ // and rsi is oversold
 			stopLoss = Math.min(previous.high, current.high);
 			pivotIdx = 0;
+			stop = pivots[pivotIdx];
 			dynami.orders().marketOrder(event.symbol, -1, "Go short");
 		}
 		// if is long and close price rises up over exit lower bb, or falls down entry lower bb
 		if( dynami.portfolio().isShort(event.symbol)){
 			if(closes.crossesUnder(pivots[Math.min(4,pivotIdx+1)])){
 				pivotIdx = Math.min(4, ++pivotIdx);
-				stop = Math.max(stopLoss, pivots[pivotIdx]);
+				stop = pivots[pivotIdx];
 			}
 			if(!dynami.orders().thereArePendingOrders() 
 				&& (closes.crossesOver(stopLoss) 
-				|| closes.crossesOver(pivots[pivotIdx]))){
+				|| closes.crossesOver(stop))){
 				dynami.orders().marketOrder(event.symbol, 1, "Exit short");	
 				stopLoss = Double.NaN;
 				stop = Double.NaN;
@@ -137,18 +135,19 @@ public class WarriorReversal implements IStage {
 		
 		if( dynami.portfolio().isFlat() // if is not on market
 				&& !dynami.orders().thereArePendingOrders() // and ther are not pending orders
-				&& closes.crossesOver(entryBB.getRealLowerBand().last()) // and close price rises up over lower bollinger band
+				&& closes.crossesOver(outerBB.getRealLowerBand()) // and close price rises up over lower bollinger band
 				&& rsi.get().last(1) <= rsiLowerThreshold){ // and rsi is oversold
-			stopLoss = Math.min(previous.low, current.low);
 			pivotIdx = 4;
+			stopLoss = Math.min(previous.low, current.low);
+			stop = pivots[pivotIdx];
 			dynami.orders().marketOrder(event.symbol, 1, "Go long");
 		}
 		
 		// if is long and close price rises up over exit lower bb, or falls down entry lower bb
 		if( dynami.portfolio().isLong(event.symbol)){
-			if(closes.crossesOver(pivots[Math.max(0,pivotIdx-1)])){
+			if(closes.crossesOver(pivots[Math.max(0, pivotIdx-1)])){
 				pivotIdx = Math.max(0, --pivotIdx);
-				stop = Math.min(stopLoss, pivots[pivotIdx]);
+				stop = pivots[pivotIdx];
 			}
 			if(!dynami.orders().thereArePendingOrders() 
 					&& (closes.crossesUnder(stopLoss) || 
