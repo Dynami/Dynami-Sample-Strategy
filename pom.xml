@@ -22,6 +22,27 @@
           <target>1.8</target>
         </configuration>
       </plugin>
+      <plugin>
+	    <artifactId>maven-deploy-plugin</artifactId>
+	    <version>2.8.2</version>
+	    <executions>
+	        <execution>
+	            <id>deploy-file</id>
+	            <phase>deploy</phase>
+	            <goals>
+	                <goal>deploy</goal>
+	            </goals>
+	            <configuration>
+	                <file>~/.m2/repository/org/dynami/Dynami-Sample-Strategy/0.0.1/Dynami-Sample-Strategy-0.0.1.jar</file>
+	                <url>file://${project.basedir}/../Dynami-UI/resources/Dynami-Sample-Strategy-0.0.1.jar</url>
+	                <groupId>org.dynami</groupId>
+					<artifactId>Dynami-Sample-Strategy</artifactId>
+					<version>0.0.1</version>
+	                <packaging>jar</packaging>
+	            </configuration>
+	        </execution>
+	    </executions>
+	</plugin>
     </plugins>
   </build>
   <dependencies>
